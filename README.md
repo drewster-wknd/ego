@@ -1,5 +1,5 @@
 # ego
-**AI Web Agent** is a Chrome extension that executes plain-English instructions on any webpage by combining AI vision with live DOM analysis.
+...is a Chrome extension that executes plain-English instructions on any webpage by combining AI vision with live DOM analysis.
 
 **How it works**
 
