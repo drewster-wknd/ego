@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Agent Debug Panel</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      margin: 0; padding: 15px; 
+      background: #f5f5f5; 
+      font-size: 14px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .panel { 
+      background: white; 
+      border-radius: 8px; 
+      padding: 20px; 
+      margin-bottom: 15px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 20px;
+    }
+    .stats { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 15px; 
+      margin-bottom: 20px;
+    }
+    .stat-box { 
+      background: #f8f9fa; 
+      padding: 15px; 
+      border-radius: 6px; 
+      text-align: center;
+    }
+    .stat-number { font-size: 24px; font-weight: bold; color: #007acc; }
+    .stat-label { color: #666; margin-top: 5px; }
+    
+    #elementList { 
+      max-height: 400px; 
+      overflow-y: auto; 
+      border: 1px solid #ddd; 
+      border-radius: 6px;
+    }
+    .element-item { 
+      padding: 12px; 
+      border-bottom: 1px solid #eee; 
+      display: flex; 
+      justify-content: space-between;
+      align-items: center;
+    }
+    .element-item:hover { background: #f8f9fa; }
+    .element-info { flex: 1; }
+    .element-id { 
+      background: #007acc; 
+      color: white; 
+      padding: 4px 8px; 
+      border-radius: 4px; 
+      font-weight: bold; 
+      margin-right: 10px;
+    }
+    .element-summary { color: #333; margin: 5px 0; }
+    .element-coords { color: #666; font-size: 12px; }
+    .element-actions { display: flex; gap: 5px; }
+    .btn { 
+      padding: 6px 12px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-size: 12px;
+    }
+    .btn-primary { background: #007acc; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn:hover { opacity: 0.8; }
+    
+    #visualOverlay { 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      pointer-events: none; 
+      z-index: 9999;
+    }
+    
+    .element-highlight {
+      position: absolute;
+      border: 2px solid #007acc;
+      background: rgba(0, 122, 204, 0.1);
+      pointer-events: none;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 122, 204, 0.3);
+    }
+    
+    .refresh-btn { 
+      background: #28a745; 
+      color: white; 
+      padding: 10px 20px; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .refresh-btn:hover { background: #218838; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <div class="header">
+        <h2>🤖 AI Agent Debug Panel</h2>
+        <button class="refresh-btn" id="refreshBtn">🔄 Refresh DOM Analysis</button>
+      </div>
+      
+      <div class="stats" id="stats">
+        <div class="stat-box">
+          <div class="stat-number" id="totalElements">--</div>
+          <div class="stat-label">Total Elements Scanned</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="interactiveElements">--</div>
+          <div class="stat-label">Interactive Elements Found</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="visibleElements">--</div>
+          <div class="stat-label">Visible & Accessible</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number" id="lastUpdate">--</div>
+          <div class="stat-label">Last Updated</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>📋 Interactive Elements Detected</h3>
+      <div id="elementList">
+        <div style="padding: 40px; text-align: center; color: #666;">
+          Click "Refresh DOM Analysis" to scan the current page
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="visualOverlay"></canvas>
+
+  <script>
+    let currentElements = [];
+    let highlightOverlays = [];
+
+    const refreshBtn = document.getElementById('refreshBtn');
+    const elementList = document.getElementById('elementList');
+    const statsElements = {
+      total: document.getElementById('totalElements'),
+      interactive: document.getElementById('interactiveElements'),
+      visible: document.getElementById('visibleElements'),
+      lastUpdate: document.getElementById('lastUpdate')
+    };
+
+    refreshBtn.addEventListener('click', refreshDOMAnalysis);
+
+    async function refreshDOMAnalysis() {
+      refreshBtn.textContent = '🔄 Analyzing...';
+      refreshBtn.disabled = true;
+
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const domData = await chrome.tabs.sendMessage(tab.id, { type: "GET_ENHANCED_DOM" });
+        
+        if (domData.error) {
+          throw new Error(domData.error);
+        }
+
+        currentElements = domData.elements;
+        updateStats(domData);
+        renderElementList();
+        
+      } catch (error) {
+        console.error('Failed to get DOM data:', error);
+        elementList.innerHTML = `<div style="padding: 20px; color: red;">Error: ${error.message}</div>`;
+      } finally {
+        refreshBtn.textContent = '🔄 Refresh DOM Analysis';
+        refreshBtn.disabled = false;
+      }
+    }
+
+    function updateStats(domData) {
+      statsElements.total.textContent = domData.totalScanned || 0;
+      statsElements.interactive.textContent = domData.elements.length || 0;
+      statsElements.visible.textContent = domData.visibleCount || 0;
+      statsElements.lastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+
+    function renderElementList() {
+      if (currentElements.length === 0) {
+        elementList.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">No interactive elements found</div>';
+        return;
+      }
+
+      const listHTML = currentElements.map(el => `
+        <div class="element-item" data-element-id="${el.id}">
+          <div class="element-info">
+            <div>
+              <span class="element-id">${el.id}</span>
+              <strong>${el.tag.toUpperCase()}</strong>
+              ${el.href ? `<code style="background: #e9ecef; padding: 2px 4px; border-radius: 3px;">${el.href}</code>` : ''}
+            </div>
+            <div class="element-summary">${el.summary}</div>
+            <div class="element-coords">
+              📍 (${el.coordinates.x}, ${el.coordinates.y}) • 
+              📏 ${el.coordinates.width}×${el.coordinates.height}px •
+              🎯 ${el.selector}
+            </div>
+          </div>
+          <div class="element-actions">
+            <button class="btn btn-primary" onclick="highlightElement(${el.id})">👁️ Highlight</button>
+            <button class="btn btn-secondary" onclick="scrollToElement(${el.id})">📍 Scroll To</button>
+            <button class="btn btn-success" onclick="testClick(${el.id})">🖱️ Test Click</button>
+          </div>
+        </div>
+      `).join('');
+
+      elementList.innerHTML = listHTML;
+    }
+
+    function highlightElement(elementId) {
+      const element = currentElements.find(el => el.id === elementId);
+      if (!element) return;
+
+      // Clear existing highlights
+      clearHighlights();
+
+      // Get the current tab and highlight the element
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: "HIGHLIGHT_ELEMENT",
+          elementId: elementId,
+          coordinates: element.coordinates
+        });
+      });
+    }
+
+    function scrollToElement(elementId) {
+      const element = currentElements.find(el => el.id === elementId);
+      if (!element) return;
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: "SCROLL_TO_ELEMENT",
+          elementId: elementId,
+          coordinates: element.coordinates
+        });
+      });
+    }
+
+    function testClick(elementId) {
+      const element = currentElements.find(el => el.id === elementId);
+      if (!element) return;
+
+      if (confirm(`Test click on: "${element.summary}"?`)) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: "EXECUTE_ENHANCED_ACTION",
+            action: {
+              type: "click",
+              elementId: elementId,
+              element: element
+            }
+          }, (response) => {
+            if (response.status === "completed") {
+              alert("✅ Click test successful!");
+            } else {
+              alert(`❌ Click test failed: ${response.error}`);
+            }
+          });
+        });
+      }
+    }
+
+    function clearHighlights() {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        chrome.tabs.sendMessage(tabs[0].id, { type: "CLEAR_HIGHLIGHTS" });
+      });
+    }
+
+    // Auto-refresh when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(refreshDOMAnalysis, 500);
+    });
+  </script>
+</body>
+</html>

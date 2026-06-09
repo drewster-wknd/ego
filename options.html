@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Web Agent — Settings</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; width: 440px; }
+    h1 { margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 13px; margin-bottom: 24px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+    .hint { color: #888; font-size: 12px; margin-bottom: 8px; }
+    input { width: 100%; padding: 8px; margin-bottom: 18px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 10px 20px; background: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #005fa3; }
+    #status { margin-top: 14px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>AI Web Agent</h1>
+  <p class="subtitle">Settings are stored locally in your browser and never sent to any server other than the API endpoint you configure.</p>
+
+  <label for="apiKey">OpenRouter API Key</label>
+  <div class="hint">Get a key at openrouter.ai — your key starts with sk-or-v1-...</div>
+  <input type="password" id="apiKey" placeholder="sk-or-v1-...">
+
+  <label for="modelId">Model ID</label>
+  <div class="hint">Must be a vision-capable model in OpenRouter format, e.g. anthropic/claude-3-5-sonnet. See openrouter.ai/models.</div>
+  <input type="text" id="modelId" placeholder="anthropic/claude-3-5-sonnet">
+
+  <button id="save">Save Settings</button>
+  <div id="status"></div>
+  <script src="options.js"></script>
+</body>
+</html>
